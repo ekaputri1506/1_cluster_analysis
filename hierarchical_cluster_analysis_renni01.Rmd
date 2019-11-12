@@ -1,0 +1,584 @@
+---
+title: "Cluster Analysis"
+author: "Renni Ekaputri (renniekaputri15@gmail.com)"
+date: "November 12, 2019"
+output:
+  html_document:
+    theme: united
+    highlight: espresso
+    fig_height: 45
+  css: styles.css
+    
+
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+<style type="text/css">
+.main-container {
+  max-width: 1700px;
+  margin-left: 50px;
+  margin-right: 40px;
+}
+</style>
+
+
+<center>
+![Renni Ekaputri](C:/Users/Test/Documents/renni/renni_cv/myproject_renniekaputri/1/renni_grayscale.jpg)
+</center>
+
+<center>
+*|Data Scientist|Business Analyst|BI Specialist|Senior Project Management Officer|Senior Project Planning|*
+</center>
+
+
+<center>
+*|EASA Part M CAMO 145 Technical Service Engineer|Aircraft Asset Management Specialist|*
+</center>
+---
+
+
+## ![Understand](C:/Users/Test/Documents/renni/renni_cv/myproject_renniekaputri/1/understand.png) Cognition of Clustering Analysis
+
+For a better visualization and sensitivity analysis, on this project we used several R statistical packages:
+
+* `Dedendextend-package {dendextend}` is a function for extending dendrogram objects. For general tree structure there is`Dendrogram {stats}`, class "dendrogram" provides general functions for handling tree-like structures. It is intended as a replacement for similar functions in hierarchical clustering and classification/regression trees, such that all of these can use the same engine for plotting or cutting trees. Hierarchical cluster analysis `hclust {stats}` on a set of dissimilarities and methods for analyzing cluster. Furthermore,`stats-package {stats}`, this package contains functions for statistical calculations and random number generation.
+
+* `Knitr-package {knitr}`takes an input file, extracts the R code in it according to a list of patterns, evaluates the code and writes the output in another file.
+
+* `Gplot-package {gplots}`is a vignette summarises the various formats that grid drawing functions take.
+
+* `Corrplot-package (corrplot}`is a graphical display of a correlation matrix, confidence interval. It also contains some algorithms to do matrix reordering. In addition, corrplot is good at details, including choosing color, text labels, color labels, layout, etc.
+
+`Iris` for flower species, `repub` for presidential vote, `animals` for animal clustering, and microarrray `gene for train and test` expression, those 4 datasets will be used on this project.
+
+```{r}
+library("DT")
+iris <- datasets::iris
+datatable(iris, options=list(pageLength = 4, scrollX=T))
+```
+
+```{r}
+library("DT")
+votes.repub <- cluster::votes.repub
+datatable(votes.repub, options=list(pageLength = 4, scrollX=T))
+```
+
+```{r}
+library("DT")
+animals <- cluster::animals
+datatable(animals, options=list(pageLength = 4, scrollX=T))
+```
+
+----------------
+
+
+
+## ![Study](C:/Users/Test/Documents/renni/renni_cv/myproject_renniekaputri/1/study.jpg)Study Cases {.tabset .tabset-fade .tabset-pills}
+
+### Flower Species
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(dendextend)
+library(knitr)
+knitr::opts_chunk$set(
+   cache = TRUE,
+   dpi = 75,
+   fig.width = 6, fig.height = 6,
+   tidy = FALSE)
+```
+
+```{r echo=TRUE, warning=FALSE}
+iris <- datasets::iris
+iris2 <- iris[,-5]
+species_labels <- iris[,5]
+library(colorspace) # get nice colors
+hcl_palettes(plot = TRUE)
+(palette = "Dark 3")
+species_col <- rev(rainbow_hcl(3))[as.numeric(species_labels)]
+```
+
+```{r echo=TRUE, warning=FALSE}
+# Plot a SPLOM:
+pairs(iris2, col = species_col,
+      lower.panel = NULL,
+       cex.labels=1.1, pch=20, cex = 1.2)
+
+# Add a legend
+par(xpd = TRUE)
+legend(x = 0.01, y = 0.2, cex = 1,
+   legend = as.character(levels(species_labels)),
+   	fill = unique(species_col))
+par(xpd = NA)
+```
+
+
+```{r echo=TRUE, warning=FALSE}
+par(las = 1, mar = c(4.5, 3, 3, 2) + 0.1, cex = .8)
+MASS::parcoord(iris2, col = species_col, var.label = TRUE, lwd = 2)
+
+# Add Title
+title("Parallel coordinates plot of the Iris data")
+# Add a legend
+par(xpd = TRUE)
+legend(x = 1.75, y = -.25, cex = 1,
+   legend = as.character(levels(species_labels)),
+   	fill = unique(species_col), horiz = TRUE)
+par(xpd = NA)
+```
+
+```{r echo=TRUE, warning=FALSE}
+d_iris <- dist(iris2) # method="man" # is a bit better
+hc_iris <- hclust(d_iris, method = "complete")
+iris_species <- rev(levels(iris[,5]))
+
+library(dendextend)
+dend <- as.dendrogram(hc_iris)
+# order it the closest we can to the order of the observations:
+dend <- rotate(dend, 1:150)
+
+# Color the branches based on the clusters:
+dend <- color_branches(dend, k=3) #, groupLabels=iris_species)
+
+# Manually match the labels, as much as possible, to the real classification of the flowers:
+labels_colors(dend) <-
+   rainbow_hcl(3)[sort_levels_values(
+      as.numeric(iris[,5])[order.dendrogram(dend)]
+   )]
+
+# We shall add the flower type to the labels:
+labels(dend) <- paste(as.character(iris[,5])[order.dendrogram(dend)],
+                           "(",labels(dend),")", 
+                           sep = "")
+# We hang the dendrogram a bit:
+dend <- hang.dendrogram(dend,hang_height=0.1)
+# reduce the size of the labels:
+# dend <- assign_values_to_leaves_nodePar(dend, 0.5, "lab.cex")
+dend <- set(dend, "labels_cex", 0.5)
+# And plot:
+par(mar = c(3,3,3,7))
+plot(dend, 
+     main = "Clustered Iris data set
+     (the labels give the true flower species)", 
+     horiz =  TRUE,  nodePar = list(cex = .007))
+legend("topleft", legend = iris_species, fill = rainbow_hcl(3))
+```
+
+```{r echo=TRUE, warning=FALSE}
+par(mar = rep(0,4))
+circlize_dendrogram(dend)
+```
+
+```{r echo=TRUE, warning=FALSE}
+some_col_func <- function(n) rev(colorspace::heat_hcl(n, c = c(80, 30), l = c(30, 90), power = c(1/5, 1.5)))
+```
+
+```{r echo=TRUE, warning=FALSE}
+library(gplots)
+gplots::heatmap.2(as.matrix(iris2), 
+          main = "Heatmap for the Iris data set",
+          srtCol = 20,
+          dendrogram = "row",
+          Rowv = dend,
+          Colv = "NA", # this to make sure the columns are not ordered
+          trace="none",          
+          margins =c(5,0.1),      
+          key.xlab = "Cm",
+          denscol = "grey",
+          density.info = "density",
+          RowSideColors = rev(labels_colors(dend)), # to add nice colored strips		
+          col = some_col_func
+         )
+```
+
+```{r echo=TRUE, warning=FALSE}
+hclust_methods <- c("ward.D", "single", "complete", "average", "mcquitty", 
+        "median", "centroid", "ward.D2")
+iris_dendlist <- dendlist()
+for(i in seq_along(hclust_methods)) {
+   hc_iris <- hclust(d_iris, method = hclust_methods[i])   
+   iris_dendlist <- dendlist(iris_dendlist, as.dendrogram(hc_iris))
+}
+names(iris_dendlist) <- hclust_methods
+iris_dendlist
+```
+
+```{r echo=TRUE, warning=FALSE}
+iris_dendlist_cor <- cor.dendlist(iris_dendlist)
+iris_dendlist_cor
+corrplot::corrplot(iris_dendlist_cor, "pie", "lower")
+```
+
+```{r echo=TRUE, warning=FALSE}
+iris_dendlist_cor_spearman <- cor.dendlist(iris_dendlist, method_coef = "spearman")
+corrplot::corrplot(iris_dendlist_cor_spearman, "pie", "lower")
+```
+
+```{r echo=TRUE, warning=FALSE}
+iris_dendlist %>% dendlist(which = c(1,8)) %>% ladderize %>% 
+   set("branches_k_color", k=3) %>%
+  untangle(method = "step1side", k_seq = 3:20) %>%
+  set("clear_branches") %>% #otherwise the single lines are not black, since they retain the previous color from the branches_k_color.
+   tanglegram(faster = TRUE) # (common_subtrees_color_branches = TRUE)
+```
+
+```{r echo=TRUE, warning=FALSE}
+iris_dendlist %>% dendlist(which = c(1,4)) %>% ladderize %>% 
+   set("branches_k_color", k=2) %>%
+untangle(method = "step1side", k_seq = 3:20) %>%
+tanglegram(faster = TRUE) # (common_subtrees_color_branches = TRUE)
+```
+
+```{r echo=TRUE, warning=FALSE}
+iris_dendlist %>% dendlist(which = c(1,4)) %>% ladderize %>%
+untangle(method = "step1side", k_seq = 3:20) %>%
+   set("rank_branches") %>%
+   tanglegram(common_subtrees_color_branches = TRUE)
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+length(unique(common_subtrees_clusters(iris_dendlist[[1]], iris_dendlist[[4]]))[-1])
+# -1 at the end is because we are ignoring the "0" subtree, which indicates leaves that are singletons.
+```
+
+
+```{r echo=TRUE, warning=FALSE}
+iris_dendlist %>% dendlist(which = c(3,4)) %>% ladderize %>% 
+   untangle(method = "step1side", k_seq = 2:6) %>%
+   set("branches_k_color", k=2) %>% 
+   tanglegram(faster = TRUE) # (common_subtrees_color_branches = TRUE)
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+par(mfrow = c(4,2))
+for(i in 1:8) {
+   iris_dendlist[[i]] %>% set("branches_k_color", k=2) %>% plot(axes = FALSE, horiz = TRUE)
+   title(names(iris_dendlist)[i])
+}
+```
+
+```{r echo=TRUE, warning=FALSE}
+iris_dendlist_cor2 <- cor.dendlist(iris_dendlist, method = "common")
+iris_dendlist_cor2
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+corrplot::corrplot(iris_dendlist_cor2, "pie", "lower")
+```
+
+```{r echo=TRUE, warning=FALSE}
+get_ordered_3_clusters <- function(dend) {
+   cutree(dend, k = 3)[order.dendrogram(dend)]
+}
+
+dend_3_clusters <- lapply(iris_dendlist, get_ordered_3_clusters)
+
+compare_clusters_to_iris <- function(clus) {FM_index(clus, rep(1:3, each = 50), assume_sorted_vectors = TRUE)}
+
+clusters_performance <- sapply(dend_3_clusters, compare_clusters_to_iris)
+dotchart(sort(clusters_performance), xlim = c(0.7,1),
+         xlab = "Fowlkes-Mallows Index (from 0 to 1)",
+         main = "Perormance of clustering algorithms \n in detecting the 3 species",
+         pch = 19)
+```
+
+* We may conclude The Iris data set is only 4-dimensional, making it possible to explore using pairs plot (SPLOM) or parallel coordinates plot. It is clear from these that two main clusters are visible, while the separation of the third cluster is difficult. In the above analysis, we learned that the complete method fails to do the proper separation of the two main clusters when cut in k=2 (but succeeds in doing it, if moving to k=3 clusters). This is different from all the other 7 methods available in hclust, which do succeed in separating the 2 main clusters from the beginning (i.e.: for k=2). We also noticed that all clustering algorithms share a relatively high proportion of common nodes (between 75% to 90%). Lastly, when it came to trying to separating the flowers into 3 species, the median clustering method did the best, while the single method did the worst in this regard.
+
+### Gene
+
+```{r echo=TRUE, warning=FALSE}
+train <- dendextend::khan$train
+test <- dendextend::khan$test
+d_train <- train %>% dist %>% hclust %>% as.dendrogram
+d_test <- test %>% dist %>% hclust %>% as.dendrogram
+d_train_test <- dendlist(train = d_train, test = d_test)
+d_train_test %>% cor.dendlist
+```
+
+```{r echo=TRUE, warning=FALSE}
+d_train_test %>% cor.dendlist(method_coef = "spearman")
+```
+
+```{r echo=TRUE, warning=FALSE}
+Bk_plot(d_train, d_test, k = 2:30, xlim = c(2,30))
+```
+
+```{r echo=TRUE, warning=FALSE}
+pre_tang_d_train_test <- d_train_test %>% ladderize %>% # untangle %>%
+   set("branches_k_color", k = 7)
+train_branches_colors <- get_leaves_branches_col(pre_tang_d_train_test$train)
+pre_tang_d_train_test %>% tanglegram(fast = TRUE, color_lines = train_branches_colors)
+```
+
+```{r echo=TRUE, warning=FALSE}
+# dput(d_train_test_common)
+d_train_test_common <- structure(list(train = structure(list(structure(list(structure(171L, label = "491565", members = 1L, height = 0, leaf = TRUE), structure(178L, label = "505491", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 7.1369942952198), structure(list(structure(list(structure(8L, label = "283315", members = 1L, height = 0, leaf = TRUE), structure(9L, label = "897177", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 2.55936539399907), structure(list(structure(list(structure(106L, label = "345553", members = 1L, height = 0, leaf = TRUE), structure(112L, label = "307660", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 5.17910461856101), structure(list(structure(list(structure(268L, label = "504791", members = 1L, height = 0, leaf = TRUE), structure(306L, label = "782503", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 4.27052507661529), structure(list(structure(list(structure(246L, label = "81518", members = 1L, height = 0, leaf = TRUE), structure(290L, label = "280837", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 1.37572388944875), structure(list(structure(list(structure(266L, label = "866694", members = 1L, height = 0, leaf = TRUE), structure(277L, label = "811956", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 3.31301518861595), structure(list(structure(273L, label = "842918", members = 1L, height = 0, leaf = TRUE), structure(274L, label = "626555", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 2.71864544948399)), members = 4, midpoint = 1.5, height = 6.35097701381449)), members = 6, midpoint = 2, height = 8.7097033164167)), members = 8, midpoint = 2.25, height = 9.23807936424017)), members = 10, midpoint = 2.375, height = 11.6573350998416)), members = 12, midpoint = 2.4375, height = 17.5620766260713)), members = 14, midpoint = 2.46875, height = 30.2363452779928, class = "dendrogram"), test = structure(list(structure(list(structure(list(structure(171L, label = "491565", members = 1L, height = 0, leaf = TRUE), structure(178L, label = "505491", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 3.96666017450449), structure(list(structure(list(structure(list(structure(268L, label = "504791", members = 1L, height = 0, leaf = TRUE), structure(306L, label = "782503", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 2.31497882927685), structure(list(structure(list(structure(266L, label = "866694", members = 1L, height = 0, leaf = TRUE), structure(277L, label = "811956", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 1.75475236429532), structure(list(structure(273L, label = "842918", members = 1L, height = 0, leaf = TRUE), structure(274L, label = "626555", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 1.34617375921535)), members = 4, midpoint = 1.5, height = 2.76465021476497)), members = 6, midpoint = 2, height = 4.52927251774499), structure(list(structure(list(structure(246L, label = "81518", members = 1L, height = 0, leaf = TRUE), structure(290L, label = "280837", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 0.714433271901582), structure(list(structure(8L, label = "283315", members = 1L, height = 0, leaf = TRUE), structure(9L, label = "897177", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 1.71895552589356)), members = 4, midpoint = 1.5, height = 6.44143803354499)), members = 10, midpoint = 4.75, height = 7.736516720075)), members = 12, midpoint = 3.625, height = 11.0066972375913), structure(list(structure(106L, label = "345553", members = 1L, height = 0, leaf = TRUE), structure(112L, label = "307660", members = 1L, height = 0, leaf = TRUE)), members = 2L, midpoint = 0.5, height = 3.6486307417989)), members = 14, midpoint = 8.0625, height = 18.2331742971431, class = "dendrogram")), class = "dendlist", .Names = c("train", 
+"test"))
+```
+
+```{r echo=TRUE, warning=FALSE}
+# This was calculated before
+# d_train_test_common <- d_train_test %>% prune_common_subtrees.dendlist
+# d_train_test_common
+d_train_test_common %>% untangle %>%  tanglegram(common_subtrees_color_branches = TRUE)
+```
+
+```{r echo=TRUE, warning=FALSE}
+d_train_test %>% nleaves
+d_train_test_common %>% nleaves
+```
+
+* We may conclude the clustering algorithm resulted in trees which are significantly similar in both the training and the test data sets beyond chance, but that this similarity is restricted to only a very small proportion of genes.
+
+
+
+### Presidential Candidate
+
+```{r echo=TRUE, warning=FALSE}
+votes.repub <- cluster::votes.repub
+```
+
+```{r echo=TRUE, warning=FALSE}
+years <- as.numeric(gsub("X", "", colnames(votes.repub)))
+
+par(las = 2, mar = c(4.5, 3, 3, 2) + 0.1, cex = .8)
+# MASS::parcoord(votes.repub, var.label = FALSE, lwd = 1)
+matplot(1L:ncol(votes.repub), t(votes.repub), type = "l", col = 1, lty = 1,
+        axes = F, xlab = "", ylab = "")
+axis(1, at = seq_along(years), labels = years)
+axis(2)
+# Add Title
+title("Votes for Republican Candidate\n in Presidential Elections \n (each line is a country - over the years)")
+```
+  
+```{r echo=TRUE, warning=FALSE}
+arcsin_transformation <- function(x) asin(x/100)
+
+dend_NA <- votes.repub %>% is.na %>%
+   dist %>% hclust %>% as.dendrogram %>% ladderize
+
+dend <- votes.repub %>% arcsin_transformation %>%
+   dist %>% hclust(method = "com") %>% as.dendrogram %>%
+   rotate(labels(dend_NA)) %>%
+   color_branches(k=3)
+
+# some_col_func <- function(n) rev(colorspace::heat_hcl(n, c = c(80, 30), l = c(30, 90), power = c(1/5, 1.5)))
+some_col_func <- colorspace::diverge_hcl
+
+
+# par(mar = c(3,3,3,3))
+# library(gplots)
+gplots::heatmap.2(as.matrix(votes.repub), 
+          main = "Votes for\n Republican Presidential Candidate\n (clustered using complete)",
+          srtCol = 60,
+          dendrogram = "row",
+          Rowv = dend,
+          Colv = "NA", # this to make sure the columns are not ordered
+          trace="none",          
+          margins =c(3,6),      
+          key.xlab = "% Votes for Republican\n Presidential Candidate",
+          labCol = years,
+          denscol = "grey",
+          density.info = "density",
+          col = some_col_func
+         )
+          # RowSideColors = rev(labels_colors(dend)), # to add nice colored strips		
+```
+
+```{r echo=TRUE, warning=FALSE}
+hclust_methods <- c("ward.D", "single", "complete", "average", "mcquitty", 
+        "median", "centroid", "ward.D2")
+votes.repub_dendlist <- dendlist()
+
+for(i in seq_along(hclust_methods)) {
+   tmp_dend <- votes.repub %>% arcsin_transformation %>% dist %>% hclust(method = hclust_methods[i]) %>% as.dendrogram 
+   votes.repub_dendlist <- dendlist(votes.repub_dendlist, tmp_dend)
+}
+names(votes.repub_dendlist) <- hclust_methods
+# votes.repub_dendlist
+```
+
+```{r echo=TRUE, warning=FALSE}
+corrplot::corrplot(cor.dendlist(votes.repub_dendlist), "pie", "lower")
+```
+
+```{r echo=TRUE, warning=FALSE}
+arcsin_transformation <- function(x) asin(x/100)
+
+dend_NA <- votes.repub %>% is.na %>%
+   dist %>% hclust %>% as.dendrogram %>% ladderize
+
+dend <- votes.repub %>% arcsin_transformation %>%
+   dist %>% hclust(method = "ave") %>% as.dendrogram %>%
+   rotate(labels(dend_NA)) %>%
+   color_branches(k=3)
+
+# some_col_func <- function(n) rev(colorspace::heat_hcl(n, c = c(80, 30), l = c(30, 90), power = c(1/5, 1.5)))
+some_col_func <- colorspace::diverge_hcl
+
+
+# par(mar = c(3,3,3,3))
+# library(gplots)
+gplots::heatmap.2(as.matrix(votes.repub), 
+          main = "Votes for\n Republican Presidential Candidate\n (clustered using average)",
+          srtCol = 60,
+          dendrogram = "row",
+          Rowv = dend,
+          Colv = "NA", # this to make sure the columns are not ordered
+          trace="none",          
+          margins =c(3,6),      
+          key.xlab = "% Votes for Republican\n Presidential Candidate",
+          labCol = years,
+          denscol = "grey",
+          density.info = "density",
+          col = some_col_func
+         )
+          # RowSideColors = rev(labels_colors(dend)), # to add nice colored strips		
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+
+ord1 <- c("North Carolina", "Virginia", "Tennessee", "Kentucky", "Maryland", 
+"Delaware", "Oklahoma", "Missouri", "New Mexico", "Oregon", "Washington", 
+"California", "West Virginia", "Hawaii", "Nevada", "Arizona", 
+"Montana", "Idaho", "Wyoming", "Utah", "Colorado", "Alaska", 
+"Illinois", "New York", "Indiana", "Ohio", "Connecticut", "New Hampshire", 
+"New Jersey", "Pennsylvania", "Iowa", "South Dakota", "North Dakota", 
+"Wisconsin", "Minnesota", "Nebraska", "Kansas", "Maine", "Michigan", 
+"Massachusetts", "Rhode Island", "Vermont", "Alabama", "Georgia", 
+"Louisiana", "Arkansas", "Florida", "Texas", "South Carolina", 
+"Mississippi")
+
+ord2 <- c("North Carolina", "Virginia", "Tennessee", "Oklahoma", "Kentucky", 
+"Maryland", "Delaware", "Missouri", "New Mexico", "West Virginia", 
+"Oregon", "Washington", "California", "Nevada", "Arizona", "Montana", 
+"Colorado", "Alaska", "Idaho", "Wyoming", "Utah", "Hawaii", "Maine", 
+"Illinois", "New York", "New Jersey", "Indiana", "Ohio", "Connecticut", 
+"New Hampshire", "Pennsylvania", "Michigan", "Iowa", "South Dakota", 
+"North Dakota", "Wisconsin", "Minnesota", "Massachusetts", "Rhode Island", 
+"Nebraska", "Kansas", "Vermont", "Alabama", "Georgia", "Louisiana", 
+"Arkansas", "Florida", "Texas", "South Carolina", "Mississippi"
+)
+
+# dput(lapply(dends, labels)[[2]])
+
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+dend_com <- votes.repub %>% arcsin_transformation %>%
+   dist %>% hclust(method = "com") %>% as.dendrogram %>%
+   rotate(labels(dend_NA)) %>%
+   color_branches(k=3) # %>% ladderize
+dend_ave <- votes.repub %>% arcsin_transformation %>%
+   dist %>% hclust(method = "ave") %>% as.dendrogram %>%
+   rotate(labels(dend_NA)) %>%
+   color_branches(k=3) # %>% ladderize
+
+# The orders were predefined after using untangle("step2side")
+# They are omitted here to save running time.
+dend_com <- rotate(dend_com, ord1)
+dend_ave <- rotate(dend_ave, ord2)
+
+dends <- dendlist(complete = dend_com, average = dend_ave) # %>% untangle("step2side")
+dends  %>% tanglegram(margin_inner = 7)
+
+```
+  
+* We may conclude  two clusterings give similar results for: "Alabama", "Georgia", "Louisiana", "Arkansas", "Florida", "Texas", "South Carolina", "Mississippi". There are also several other sub-trees which are identical between the two methods. The biggest difference lies in several "rouge" states that are placed differently in the two clustering algorithms. They are: Vermont, Michigan, Maine, Hawaii, New Jersey, West Virginia, and Oklahoma.  
+  
+### Animal Clustering
+
+
+```{r echo=TRUE, warning=FALSE}
+animals <- cluster::animals
+
+colnames(animals) <- c("warm-blooded", 
+                       "can fly",
+                       "vertebrate",
+                       "endangered",
+                       "live in groups",
+                       "have hair")
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+dend_r <- animals %>% dist(method = "man") %>% hclust(method = "ward.D") %>% as.dendrogram %>% ladderize %>%
+    color_branches(k=4)
+
+dend_c <- t(animals) %>% dist(method = "man") %>% hclust(method = "com") %>% as.dendrogram %>% ladderize%>%
+    color_branches(k=3)
+
+
+# some_col_func <- function(n) rev(colorspace::heat_hcl(n, c = c(80, 30), l = c(30, 90), power = c(1/5, 1.5)))
+# some_col_func <- colorspace::diverge_hcl
+# some_col_func <- colorspace::sequential_hcl
+some_col_func <- function(n) (colorspace::diverge_hcl(n, h = c(246, 40), c = 96, l = c(65, 90)))
+
+
+
+# par(mar = c(3,3,3,3))
+# library(gplots)
+gplots::heatmap.2(as.matrix(animals-1), 
+          main = "Attributes of Animals",
+          srtCol = 35,
+          Rowv = dend_r,
+          Colv = dend_c,
+          trace="row", hline = NA, tracecol = "darkgrey",         
+          margins =c(6,3),      
+          key.xlab = "no / yes",
+          denscol = "grey",
+          density.info = "density",
+          col = some_col_func
+         )
+
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+hclust_methods <- c("ward.D", "single", "complete", "average", "mcquitty", 
+        "median", "centroid", "ward.D2")
+animals_dendlist <- dendlist()
+
+for(i in seq_along(hclust_methods)) {
+   tmp_dend <-  animals %>% dist(method = "man") %>% 
+      hclust(method = hclust_methods[i]) %>% as.dendrogram 
+   animals_dendlist <- dendlist(animals_dendlist, tmp_dend)
+}
+names(animals_dendlist) <- hclust_methods
+# votes.repub_dendlist
+
+```
+
+
+```{r echo=TRUE, warning=FALSE}
+cophenetic_cors <- cor.dendlist(animals_dendlist)
+corrplot::corrplot(cophenetic_cors, "pie", "lower")
+
+```
+
+```{r echo=TRUE, warning=FALSE}
+remove_median <- dendlist(animals_dendlist, which = c(1:8)[-6] )
+FM_cors <- cor.dendlist(remove_median, method = "FM_index", k = 4)
+corrplot::corrplot(FM_cors, "pie", "lower")
+
+```
+
+* We may conclude We removed the "median" method since it did not have k=4 possible. In general, the results seems sensitive to the algorithm used, and the different algorithm methods do not seem to agree with one another (with regards to k=4), so further analyses may be in place in order to decide on which algorithm and interpretation are most appropriate for these data.
+
+---
+---
+
